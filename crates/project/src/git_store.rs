@@ -21,7 +21,7 @@ use git::{
     blame::Blame,
     parse_git_remote_url,
     repository::{
-        Branch, CommitDetails, CommitDiff, CommitFile, DiffType, GitRepository,
+        Branch, CommitDetails, CommitDiff, CommitFile, CommitOptions, DiffType, GitRepository,
         GitRepositoryCheckpoint, PushOptions, Remote, RemoteCommandOutput, RepoPath, ResetMode,
         UpstreamTrackingStatus,
     },
@@ -1754,7 +1754,8 @@ impl GitStore {
 
         repository_handle
             .update(&mut cx, |repository_handle, cx| {
-                repository_handle.commit(message, name.zip(email), cx)
+                // TODO forward commit options from remote
+                repository_handle.commit(message, name.zip(email), Default::default(), cx)
             })?
             .await??;
         Ok(proto::Ack {})
@@ -3097,6 +3098,7 @@ impl Repository {
         &self,
         message: SharedString,
         name_and_email: Option<(SharedString, SharedString)>,
+        options: CommitOptions,
         _cx: &mut App,
     ) -> oneshot::Receiver<Result<()>> {
         let id = self.id;
@@ -3107,9 +3109,14 @@ impl Repository {
                     backend,
                     environment,
                     ..
-                } => backend.commit(message, name_and_email, environment).await,
+                } => {
+                    backend
+                        .commit(message, name_and_email, options, environment)
+                        .await
+                }
                 RepositoryState::Remote { project_id, client } => {
                     let (name, email) = name_and_email.unzip();
+                    // Todo: Handle options for remote
                     client
                         .request(proto::Commit {
                             project_id: project_id.0,
