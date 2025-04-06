@@ -113,6 +113,7 @@ pub enum IconName {
     FileGeneric,
     FileGit,
     FileLock,
+    FilePen,
     FileRust,
     FileSearch,
     FileText,
